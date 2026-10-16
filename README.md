@@ -1,77 +1,96 @@
-# arpscan
+# netmap
 
-Scanner e monitor de dispositivos numa rede local IPv4, feito em C para Linux.
-Usa pedidos ARP para encontrar dispositivos na rede da interface indicada e
-assinala entradas e saídas enquanto está em execução.
+Scanner e monitor de dispositivos IPv4 numa rede local Linux. Envia pedidos
+ARP, apresenta os dispositivos que respondem e, em modo de monitorização,
+regista alterações observadas na rede.
 
-> Utilize apenas em redes suas ou para as quais tenha autorização.
+Usa o programa apenas em redes próprias ou para as quais tenhas autorização.
 
 ## Requisitos
 
-- Linux com suporte para sockets `AF_PACKET` (o programa usa cabeçalhos Linux).
-- GCC e ferramentas de compilação.
-- Privilégios de `root` para abrir o raw socket.
-- Opcional: `ieee-data`, para mostrar o fabricante associado ao endereço MAC.
+- Linux (incluindo Raspberry Pi OS; no WSL2, uma interface de rede compatível
+  com `AF_PACKET`).
+- GCC e `make`.
+- Opcional: o ficheiro `/usr/share/ieee-data/oui.txt`, para identificar o
+  fabricante pelo prefixo MAC.
 
-Em Debian ou Ubuntu, instale as dependências com:
+O projeto usa apenas a libc e cabeçalhos do Linux; não precisa de dependências
+adicionais para compilar.
 
-```sh
-sudo apt update
-sudo apt install build-essential ieee-data
-```
-
-Sem `ieee-data`, o scanner continua a funcionar, mas pode mostrar o fabricante
-como desconhecido.
-
-## Compilar
+## Compilar e instalar
 
 Na pasta do projeto:
 
 ```sh
-gcc -Wall -Wextra -O2 arpscan.c -o arpscan
+make
 ```
 
-## Executar
-
-Veja as interfaces de rede e os respetivos endereços:
+Para instalar em `/usr/local/bin` e atribuir ao executável a capacidade de abrir
+raw sockets:
 
 ```sh
-ip -br addr
+sudo make install
 ```
 
-Escolha a interface ligada à rede que pretende monitorizar (por exemplo,
-`eth0`, `enp3s0` ou `wlan0`) e execute:
+A instalação pede privilégios uma vez; depois o programa pode ser executado sem
+`sudo`. Para remover os ficheiros gerados pela compilação:
 
 ```sh
-sudo ./arpscan enp3s0
+make clean
 ```
 
-Substitua `enp3s0` pelo nome da interface do seu sistema. O programa obtém
-automaticamente o endereço e a máscara IPv4 dessa interface. Prima `Ctrl+C`
-para parar.
-
-## O que esperar
-
-- O primeiro scan apresenta a tabela dos dispositivos encontrados.
-- Os scans seguintes são feitos aproximadamente a cada cinco segundos e
-  mostram mudanças, como dispositivos que entram, saem ou voltam à rede.
-- O fabricante é consultado em `/usr/share/ieee-data/oui.txt`, quando esse
-  ficheiro está instalado.
-
-## Dispositivos conhecidos e privacidade
-
-O programa lê e atualiza `known_devices.txt` na pasta de onde é executado.
-Usa os endereços MAC guardados nesse ficheiro para distinguir dispositivos já
-vistos de dispositivos novos. Se o ficheiro ainda não existir, é criado quando
-o programa regista dispositivos.
-
-Este ficheiro é ignorado pelo Git porque pode conter endereços IP e MAC da sua
-rede. Não o adicione ao repositório. Se já tiver sido adicionado ao Git,
-remova-o do índice antes de publicar, sem apagar a cópia local:
+## Utilização
 
 ```sh
-git rm --cached known_devices.txt
+./netmap
+./netmap -i eth0 -w
+./netmap 192.168.1.0/24
+./netmap -t 3 192.168.1.0/24
+./netmap 192.168.1.0/24 -p
 ```
 
-O executável compilado `arpscan` também é ignorado; publique o código-fonte e
-compile-o no sistema onde o vai utilizar.
+As opções presentes nesta versão são:
+
+- `-i iface`: escolhe a interface; sem esta opção, é usada a interface da rota
+  predefinida.
+- `-w`: continua a monitorizar, detetando entradas, saídas e regressos.
+- `-t seg`: tempo de espera pelas respostas ARP em cada scan (por omissão, 2
+  segundos).
+- `-p`: testa portas TCP comuns nos dispositivos encontrados e apresenta uma
+  classificação aproximada pelo conjunto de serviços que responde.
+- `-h`: apresenta a ajuda.
+- `alvo`: endereço IPv4 ou rede CIDR; se omitido, usa os endereços de host da
+  rede da interface selecionada.
+
+O scan de portas é opcional, usa ligações TCP não bloqueantes e testa uma lista
+fixa de portas de serviços comuns. A classificação é apenas indicativa: uma
+porta aberta não identifica com certeza o sistema operativo nem o tipo de
+equipamento.
+
+## Estrutura
+
+- `main.c`: argumentos, scan e ciclo de monitorização.
+- `net.c` / `net.h`: interface, gateway, raw socket e envio/receção ARP.
+- `oui.c` / `oui.h`: carregamento da tabela IEEE e pesquisa do fabricante.
+- `names.c` / `names.h`: nomes personalizados, mDNS e DNS inverso.
+- `ports.c` / `ports.h`: sondagem não bloqueante de portas TCP comuns e
+  classificação indicativa dos serviços.
+- `known.c` / `known.h`: dispositivos conhecidos e deteção de alterações
+  IP/MAC.
+- `output.c` / `output.h`: formatação da tabela e mensagens de estado.
+- `util.c` / `util.h`: tempo monotónico e ordenação dos dispositivos.
+- `common.h`: definições partilhadas de `struct device` e `struct arp_packet`.
+- `Makefile`: compilação de todos os ficheiros `.c`, instalação e limpeza.
+
+Os ficheiros `names.txt` e `known_devices.txt` são lidos na pasta de onde o
+programa é executado. `names.txt` associa um MAC a um nome personalizado;
+`known_devices.txt` é atualizado com os dispositivos encontrados.
+
+## Como funciona o ARP
+
+Numa rede IPv4 local, um computador precisa de descobrir que endereço MAC
+corresponde a um endereço IP. Envia então um pedido ARP em broadcast: todos os
+equipamentos locais o recebem, mas normalmente só o equipamento que possui
+aquele IP responde com o seu MAC. O netmap envia estes pedidos para os
+endereços do intervalo escolhido e guarda as respostas. Como o ARP só funciona
+no segmento local, o alvo tem de pertencer à rede local da interface.

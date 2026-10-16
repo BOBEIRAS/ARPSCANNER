@@ -1,9 +1,10 @@
-#ifndef OUI_H
-#define OUI_H
-#include <stdint.h>
-#include <stddef.h>
+#ifndef NETWATCH_OUI_H
+#define NETWATCH_OUI_H
 
-void load_oui(void);
-void vendor(const uint8_t *m, char *out, size_t n);
+#include <stddef.h>
+#include <stdint.h>
+
+void oui_load(void);
+void oui_vendor(const uint8_t *mac, char *out, size_t size);
 
 #endif
