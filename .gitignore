@@ -4,3 +4,4 @@ netwatch
 netmap
 names.txt
 *.o
+/build/

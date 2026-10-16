@@ -69,17 +69,21 @@ equipamento.
 
 ## Estrutura
 
-- `main.c`: argumentos, scan e ciclo de monitorização.
-- `net.c` / `net.h`: interface, gateway, raw socket e envio/receção ARP.
-- `oui.c` / `oui.h`: carregamento da tabela IEEE e pesquisa do fabricante.
-- `names.c` / `names.h`: nomes personalizados, mDNS e DNS inverso.
-- `ports.c` / `ports.h`: sondagem não bloqueante de portas TCP comuns e
+- `src/`: código-fonte C dos módulos.
+- `include/`: headers públicos partilhados entre módulos.
+- `build/`: ficheiros objeto `.o` gerados pelo `make`; não é necessário
+  versioná-los.
+- `src/main.c`: argumentos, scan e ciclo de monitorização.
+- `src/net.c` / `include/net.h`: interface, gateway, raw socket e envio/receção ARP.
+- `src/oui.c` / `include/oui.h`: carregamento da tabela IEEE e pesquisa do fabricante.
+- `src/names.c` / `include/names.h`: nomes personalizados, mDNS e DNS inverso.
+- `src/ports.c` / `include/ports.h`: sondagem não bloqueante de portas TCP comuns e
   classificação indicativa dos serviços.
-- `known.c` / `known.h`: dispositivos conhecidos e deteção de alterações
+- `src/known.c` / `include/known.h`: dispositivos conhecidos e deteção de alterações
   IP/MAC.
-- `output.c` / `output.h`: formatação da tabela e mensagens de estado.
-- `util.c` / `util.h`: tempo monotónico e ordenação dos dispositivos.
-- `common.h`: definições partilhadas de `struct device` e `struct arp_packet`.
+- `src/output.c` / `include/output.h`: formatação da tabela e mensagens de estado.
+- `src/util.c` / `include/util.h`: tempo monotónico e ordenação dos dispositivos.
+- `include/common.h`: definições partilhadas de `struct device` e `struct arp_packet`.
 - `Makefile`: compilação de todos os ficheiros `.c`, instalação e limpeza.
 
 Os ficheiros `names.txt` e `known_devices.txt` são lidos na pasta de onde o
