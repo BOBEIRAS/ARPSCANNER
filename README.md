@@ -1,4 +1,4 @@
-# netmap
+# Netmap
 
 Scanner e monitor de dispositivos IPv4 numa rede local Linux. Envia pedidos
 ARP, apresenta os dispositivos que respondem e, em modo de monitorização,
