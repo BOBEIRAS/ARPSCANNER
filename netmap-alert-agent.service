@@ -1,0 +1,17 @@
+[Unit]
+Description=Netmap security alert agent
+After=network-online.target suricata.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/netmap-alert-agent.conf
+ExecStart=/usr/bin/python3 /usr/local/lib/netmap/alert_agent.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Netmap local alert API and dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/usr/local/lib/netmap/dashboard
+EnvironmentFile=/etc/netmap-alert-agent.conf
+ExecStart=/usr/local/lib/netmap/venv/bin/python /usr/local/lib/netmap/dashboard/app.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

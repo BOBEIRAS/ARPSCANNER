@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor de rede</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; background: #f4f6f8; color: #17202a }
+    main { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 12px #0001 }
+    li { list-style: none; border-left: 4px solid #e67e22; padding: .8rem; margin: .6rem 0; background: #fafafa }
+    code { white-space: pre-wrap; overflow-wrap: anywhere }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Alertas de segurança</h1>
+  <p id="status">A carregar...</p>
+  <ul id="alerts"></ul>
+</main>
+<script>
+async function refresh() {
+  const response = await fetch('/api/alerts');
+  if (!response.ok) throw new Error('Não foi possível carregar os alertas');
+  const alerts = await response.json();
+  document.querySelector('#alerts').innerHTML = alerts.map(item =>
+    `<li><strong>#${item.id}</strong> <code>${escapeHtml(item.alert)}</code></li>`
+  ).join('');
+  document.querySelector('#status').textContent =
+    `${alerts.length} alerta(s) guardado(s)`;
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[c]));
+}
+refresh().catch(error => document.querySelector('#status').textContent = error.message);
+setInterval(() => refresh().catch(() => {}), 5000);
+</script>
+</body>
+</html>

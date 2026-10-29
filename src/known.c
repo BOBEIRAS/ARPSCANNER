@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include "known.h"
+#include "output.h"
 
 #define KNOWN_FILE "known_devices.txt"
 
@@ -92,20 +93,8 @@ int known_check_binding(uint32_t ip, const uint8_t *mac, uint32_t gateway)
         int alert = (now - bind_tab[i].last_alert) >= 10;
         if (alert)
         {
-            char ts[16], ipstr[INET_ADDRSTRLEN];
-            strftime(ts, sizeof(ts), "%H:%M:%S", localtime(&now));
-            uint32_t n = htonl(ip);
-            inet_ntop(AF_INET, &n, ipstr, sizeof(ipstr));
             const uint8_t *old_mac = bind_tab[i].mac;
-            printf("[%s] %s %s mudou de MAC: %02x:%02x:%02x:%02x:%02x:%02x -> %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   ts, ip == gateway ? "!!! CRÍTICO !!!" : "ALERTA", ipstr,
-                   old_mac[0], old_mac[1], old_mac[2], old_mac[3], old_mac[4], old_mac[5],
-                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-            if (ip == gateway)
-                printf("           Alguém pode estar a fazer-se passar pelo router (ARP spoofing).\n");
-            else
-                printf("           Pode ser ARP spoofing, ou o router deu este IP a outro aparelho.\n");
-            fflush(stdout);
+            output_log_binding_alert(ip, gateway, old_mac, mac);
             bind_tab[i].last_alert = now;
         }
         memcpy(bind_tab[i].mac, mac, 6);

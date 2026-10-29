@@ -37,6 +37,7 @@ static void usage(const char *program)
            "  -w          modo monitor: fica a vigiar e avisa das mudanças\n"
            "  -t seg      tempo de espera por respostas (por defeito 2)\n"
            "  -p          identifica serviços TCP comuns nos dispositivos encontrados\n"
+           "  -j          emite JSON Lines para integração com dashboards\n"
            "  -h          esta ajuda\n",
            program);
 }
@@ -54,10 +55,26 @@ static void get_port_summary(uint32_t ip, char *out, size_t size)
 static void log_port_summary(uint32_t ip)
 {
     char address[INET_ADDRSTRLEN], summary[112];
+    uint16_t open_ports[18];
+    size_t count = ports_scan_ports(ip, open_ports,
+                                    sizeof(open_ports) / sizeof(open_ports[0]));
     output_format_ip(ip, address, sizeof(address));
-    get_port_summary(ip, summary, sizeof(summary));
-    printf("          [PORTAS] %s: %s\n", address, summary);
-    fflush(stdout);
+    snprintf(summary, sizeof(summary), "%s (TCP: ", ports_guess_type(open_ports, count));
+    ports_format_list(open_ports, count, summary + strlen(summary),
+                      sizeof(summary) - strlen(summary));
+    strncat(summary, ")", sizeof(summary) - strlen(summary) - 1);
+    for (size_t i = 0; i < count; i++)
+        if (open_ports[i] == 23 || open_ports[i] == 445 ||
+            open_ports[i] == 3389 || open_ports[i] == 3306)
+        {
+            output_log_port_alert(ip, open_ports, count);
+            break;
+        }
+    if (!output_json_enabled())
+    {
+        printf("          [PORTAS] %s: %s\n", address, summary);
+        fflush(stdout);
+    }
 }
 
 static int run_scan(struct net_state *net, uint32_t low, uint32_t high,
@@ -98,7 +115,7 @@ static int run_scan(struct net_state *net, uint32_t low, uint32_t high,
         uint32_t source_n;
         memcpy(&source_n, reply.spa, 4);
         uint32_t source = ntohl(source_n);
-        if (source <= low || source >= high)
+        if (source < low || source > high)
             continue;
         known_check_binding(source, reply.sha, net->gateway);
         if (seen[source - low])
@@ -274,13 +291,15 @@ static void handle_announcement(const struct arp_packet *packet,
 static void run_monitor(struct net_state *net, uint32_t low, uint32_t high,
                         double wait_s, uint8_t *seen, size_t seen_size,
                         struct device *devices, int scan_ports,
-                        struct tracking_state *tracking)
+                        struct tracking_state *tracking, int json_output)
 {
     const int interval = 5;
     for (;;)
     {
         int found = run_scan(net, low, high, wait_s, seen, seen_size, devices);
         update_after_scan(devices, found, scan_ports, tracking);
+        if (json_output)
+            output_print_json_snapshot(net, devices, found, scan_ports);
 
         double end = util_now_sec() + interval;
         while (util_now_sec() < end)
@@ -305,9 +324,10 @@ int main(int argc, char *argv[])
     char ifname[IFNAMSIZ] = "";
     int watch = 0;
     int scan_ports = 0;
+    int json_output = 0;
     double wait_s = 2.0;
     int option;
-    while ((option = getopt(argc, argv, "i:wt:ph")) != -1)
+    while ((option = getopt(argc, argv, "i:wt:pjh")) != -1)
     {
         switch (option)
         {
@@ -322,6 +342,9 @@ int main(int argc, char *argv[])
             break;
         case 'p':
             scan_ports = 1;
+            break;
+        case 'j':
+            json_output = 1;
             break;
         case 'h':
             usage(argv[0]);
@@ -345,6 +368,7 @@ int main(int argc, char *argv[])
 
     known_load();
     oui_load();
+    output_set_json(json_output);
 
     uint32_t low = net.network + 1, high = net.broadcast - 1;
     if (target && !net_parse_target(target, &low, &high))
@@ -358,7 +382,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    output_print_range(low, high);
+    if (!json_output)
+        output_print_range(low, high);
     net_set_receive_timeout(&net);
 
     size_t seen_size = (size_t)(high - low) + 1;
@@ -372,10 +397,23 @@ int main(int argc, char *argv[])
     static struct device devices[MAX_DEVS];
     struct tracking_state tracking = {0};
     int found = run_scan(&net, low, high, wait_s, seen, seen_size, devices);
-    print_first_scan(&net, devices, found, watch, scan_ports, &tracking);
+    if (json_output)
+    {
+        output_print_json_snapshot(&net, devices, found, scan_ports);
+        for (int i = 0; i < found; i++)
+        {
+            if (!known_is_known(devices[i].mac))
+                known_remember(&devices[i]);
+            tracking.tracked[i] = devices[i];
+            tracking.miss[i] = 0;
+        }
+        tracking.count = found;
+    }
+    else
+        print_first_scan(&net, devices, found, watch, scan_ports, &tracking);
     if (watch)
         run_monitor(&net, low, high, wait_s, seen, seen_size, devices,
-                    scan_ports, &tracking);
+                    scan_ports, &tracking, json_output);
 
     free(seen);
     net_close(&net);
