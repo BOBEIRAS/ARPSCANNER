@@ -121,7 +121,7 @@ serviços comuns e não pretende substituir uma auditoria completa do Nmap.
 O agente [alert_agent.py](tools/alert_agent.py) executa o scanner continuamente,
 lê os alertas do Suricata (`eve.json`) e envia apenas alertas para uma API
 HTTPS. Se a API falhar, guarda os eventos numa fila SQLite local e tenta
-novamente. Não é necessário expor a Raspberry Pi à Internet.
+novamente.
 
 Instala o agente:
 
@@ -150,10 +150,10 @@ alertas do Suricata. Não coloques o token no código nem no repositório.
 
 ### API e dashboard local
 
-Para uma instalação autónoma na Raspberry Pi, o projeto inclui uma API Flask e
+Para uma instalação autónoma , o projeto inclui uma API Flask e
 um dashboard local. A API fica no porto `5000` e deve ser limitada à rede local
 com uma regra de firewall. O agente comunica por `localhost`; esse tráfego não
-sai da Raspberry Pi.
+sai do computador.
 
 ```sh
 sudo apt install -y python3-venv
@@ -175,7 +175,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now netmap-dashboard netmap-alert-agent
 ```
 
-Abre no navegador `http://IP_DA_RASPBERRY:5000`. Para limitar o porto à rede
+Abre no navegador `http://IP_DO_PC:5000`. Para limitar o porto à rede
 local, configura UFW, por exemplo: `sudo ufw allow from 192.168.1.0/24 to any port 5000 proto tcp`.
 
 ### Verificação da instalação
@@ -201,7 +201,7 @@ sudo systemctl --no-pager status netmap-alert-agent
 sudo journalctl -u netmap-alert-agent -n 50 --no-pager
 ```
 
-O dashboard deve abrir em `http://IP_DA_RASPBERRY:5000`. Para testar a API
+O dashboard deve abrir em `http://IP_DO_PC:5000`. Para testar a API
 sem executar um ataque, envia um alerta de laboratório:
 
 ```sh
