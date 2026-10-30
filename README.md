@@ -157,7 +157,7 @@ sai do computador.
 
 ```sh
 sudo apt install -y python3-venv
-cd /home/andre/projetos/ARPSCANNER
+cd /home/user/TEUS_PROJETOS/ARPSCANNER
 sudo make install-dashboard
 ```
 
